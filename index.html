@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Познай числото</title>
+  <style>
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:#101827; color:#f4f7fb; font-family:system-ui,Arial,sans-serif; }
+    main { width:min(90%,420px); padding:28px; border:1px solid #334155; border-radius:18px; background:#182437; box-shadow:0 20px 60px #0005; text-align:center; }
+    h1 { margin-top:0; }
+    p { color:#cbd5e1; }
+    input,button { font:inherit; padding:12px; border-radius:10px; border:1px solid #475569; }
+    input { width:90px; background:#0f172a; color:white; }
+    button { cursor:pointer; background:#38bdf8; color:#082f49; border:0; font-weight:700; }
+    button:disabled { opacity:.5; cursor:wait; }
+    #message { min-height:3em; margin-top:18px; font-weight:700; }
+    .small { font-size:.85rem; color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>🎯 Познай числото</h1>
+    <p>Избрах число от 1 до 10. Можеш ли да го познаеш?</p>
+    <div>
+      <input id="guess" type="number" min="1" max="10" value="5" aria-label="Твоето предположение">
+      <button id="check" disabled>Зареждане…</button>
+    </div>
+    <div id="message">Зареждаме Python…</div>
+    <button id="restart" hidden>Нова игра</button>
+    <p class="small">Играта използва Python чрез Pyodide в браузъра.</p>
+  </main>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+  <script>
+    let pyodide;
+    async function start() {
+      pyodide = await loadPyodide();
+      const response = await fetch("./game.py");
+      const pythonCode = await response.text();
+      pyodide.runPython(pythonCode);
+      document.getElementById("check").disabled = false;
+      document.getElementById("check").textContent = "Провери";
+      document.getElementById("message").textContent = "Готово! Направи предположение.";
+    }
+    document.getElementById("check").addEventListener("click", () => {
+      const input = document.getElementById("guess");
+      const value = Number(input.value);
+      if (!Number.isInteger(value) || value < 1 || value > 10) {
+        document.getElementById("message").textContent = "Въведи цяло число от 1 до 10.";
+        return;
+      }
+      pyodide.globals.set("user_guess", value);
+      const result = pyodide.runPython("check_guess(user_guess)");
+      document.getElementById("message").textContent = result;
+      if (String(result).startsWith("Поздравления")) {
+        document.getElementById("check").disabled = true;
+        document.getElementById("restart").hidden = false;
+      }
+    });
+    document.getElementById("restart").addEventListener("click", () => {
+      pyodide.runPython("new_game()");
+      document.getElementById("message").textContent = "Нова игра! Направи предположение.";
+      document.getElementById("check").disabled = false;
+      document.getElementById("restart").hidden = true;
+    });
+    start().catch(err => {
+      document.getElementById("message").textContent = "Не успях да заредя Python. Провери интернет връзката и презареди страницата.";
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
